@@ -1,7 +1,7 @@
 Title: Gmail Email Deletion Script
-
+//
 **Requirements**
-
+//
 * **Python 3:** You'll need Python 3 installed on your system. Download the latest version from [https://www.python.org/downloads/](https://www.python.org/downloads/)
 * **Dependencies:** Install the required libraries using pip:
     ```bash
