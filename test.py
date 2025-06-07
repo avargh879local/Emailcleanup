@@ -40,7 +40,9 @@ def delete_emails():
         for criterion in criteria:
             typ, data = mail.uid('SEARCH', None, criterion)
             if data[0]:
-                email_ids = data[0].split()
+                # imaplib returns message UIDs as bytes. Decode them to strings
+                # so they can be passed back into subsequent IMAP commands.
+                email_ids = [uid.decode() for uid in data[0].split()]
                 total_deleted += len(email_ids)
                 for num in tqdm(email_ids, desc="Deleting emails", unit="email"):
                     # Fetch the email's headers
