@@ -1,15 +1,21 @@
 import imaplib
 import email
-from tqdm import tqdm
-from colorama import Fore, Style, init
+import os
+from tqdm import tqdm  # Optional for progress
+from colorama import Fore, Style, init  # Optional for colors
 
-# Initialize Colorama
-init(autoreset=True)
+# Initialize Colorama if available
+try:
+    init(autoreset=True)
+except:
+    pass  # Ignore if not installed
 
-# Configuration
-EMAIL_ADDRESS = 'abyvarghese2007@gmail.com'
-PASSWORD = 'your app password here'  # For Gmail, use an app password
-IMAP_SERVER = 'imap.gmail.com'
+# Configuration from env vars
+EMAIL_ADDRESS = os.environ.get('EMAIL_ADDRESS')
+PASSWORD = os.environ.get('PASSWORD')
+IMAP_SERVER = os.environ.get('IMAP_SERVER', 'imap.gmail.com')
+DRY_RUN = os.environ.get('DRY_RUN', 'false').lower() == 'true'  # Set to 'true' for preview mode
+CRITERIA = os.environ.get('CRITERIA', '(FROM "sender1@example.com"),(X-GM-RAW "category:promotions"),(X-GM-RAW "category:social"),(X-GM-RAW "is:spam")').split(';')  # Semicolon-separated
 
 def hacker_art():
     print(Fore.GREEN + r"""
@@ -23,46 +29,45 @@ def hacker_art():
     """)
 
 def delete_emails():
+    if not EMAIL_ADDRESS or not PASSWORD:
+        raise ValueError("EMAIL_ADDRESS and PASSWORD must be set as environment variables.")
+    
     hacker_art()
     try:
         mail = imaplib.IMAP4_SSL(IMAP_SERVER)
         mail.login(EMAIL_ADDRESS, PASSWORD)
-        mail.select('"[Gmail]/All Mail"')  # Selects all mail across categories
-
-        criteria = [
-            '(FROM "sender1@example.com")',  # Add your specific senders or criteria here
-            '(X-GM-RAW "category:promotions")',
-            '(X-GM-RAW "category:social")',
-            '(X-GM-RAW "is:spam")'
-        ]
+        mail.select('"[Gmail]/All Mail"')  # Access all emails
 
         total_deleted = 0
-        for criterion in criteria:
+        for criterion in CRITERIA:
+            criterion = criterion.strip()
             typ, data = mail.uid('SEARCH', None, criterion)
             if data[0]:
-                # imaplib returns message UIDs as bytes. Decode them to strings
-                # so they can be passed back into subsequent IMAP commands.
                 email_ids = [uid.decode() for uid in data[0].split()]
                 total_deleted += len(email_ids)
-                for num in tqdm(email_ids, desc="Deleting emails", unit="email"):
-                    # Fetch the email's headers
+                desc = "Previewing" if DRY_RUN else "Deleting"
+                for num in tqdm(email_ids, desc=f"{desc} emails for {criterion}", unit="email"):
+                    # Fetch headers for logging (optional; skip for speed)
                     typ, msg_data = mail.uid('FETCH', num, '(RFC822.HEADER)')
                     if msg_data[0] is not None:
                         msg = email.message_from_bytes(msg_data[0][1])
                         sender = msg['from']
                         subject = msg['subject']
-                        print(Fore.GREEN + f"Deleting email from {sender}: '{subject}'")
+                        print(Fore.GREEN + f"{'Would delete' if DRY_RUN else 'Deleting'} email from {sender}: '{subject}'")
                     
-                    # Mark the email for deletion
-                    mail.uid('STORE', num, '+FLAGS', '(\\Deleted)')
+                    if not DRY_RUN:
+                        mail.uid('STORE', num, '+FLAGS', '(\\Deleted)')
 
-        mail.expunge()
+        if not DRY_RUN:
+            mail.expunge()
         mail.logout()
 
-        print(Fore.YELLOW + f'{total_deleted} emails deleted successfully!')
+        action = "would be deleted" if DRY_RUN else "deleted"
+        print(Fore.YELLOW + f'{total_deleted} emails {action} successfully!')
 
     except Exception as e:
         print(Fore.RED + "Error occurred:", e)
+        raise
 
-# Example usage
+# Run the script
 delete_emails()
