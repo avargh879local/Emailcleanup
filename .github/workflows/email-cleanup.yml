@@ -1,0 +1,28 @@
+name: Email Cleanup
+
+on:
+  workflow_dispatch:  # Manual trigger from Actions tab
+  # schedule:         # Uncomment for auto-run (e.g., weekly)
+  #   - cron: '0 0 * * 0'  # Every Sunday at midnight UTC
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'  # Matches your env
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run cleanup script
+        run: python cleanup.py
+        env:
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          DRY_RUN: ${{ vars.DRY_RUN }}  # Optional, use repo variables for non-secrets
